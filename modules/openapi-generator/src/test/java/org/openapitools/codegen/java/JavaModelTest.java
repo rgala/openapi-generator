@@ -28,16 +28,21 @@ import io.swagger.v3.oas.models.parameters.RequestBody;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.responses.ApiResponses;
 import io.swagger.v3.parser.util.SchemaTypeUtil;
+import org.json.JSONException;
 import org.openapitools.codegen.*;
 import org.openapitools.codegen.config.CodegenConfigurator;
 import org.openapitools.codegen.languages.JavaClientCodegen;
+import org.skyscreamer.jsonassert.JSONAssert;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class JavaModelTest {
 
@@ -45,7 +50,8 @@ public class JavaModelTest {
     public void simpleModelTest() {
         final Schema model = new Schema()
                 .description("a sample model")
-                .addProperties("id", new IntegerSchema().format(SchemaTypeUtil.INTEGER64_FORMAT))
+                .addProperties("id", new IntegerSchema().format(SchemaTypeUtil.INTEGER64_FORMAT)
+                        .example(123))
                 .addProperties("name", new StringSchema()
                         .example("Tony"))
                 .addProperties("createdAt", new DateTimeSchema())
@@ -1117,10 +1123,21 @@ public class JavaModelTest {
     }
 
     @Test(description = "convert an array schema")
-    public void arraySchemaTest() {
+    public void arraySchemaTest() throws JSONException {
         final Schema testSchema = new ObjectSchema()
                 .addProperties("pets", new ArraySchema()
-                        .items(new Schema<>().$ref("#/components/schemas/Pet")));
+                        .items(new Schema<>().$ref("#/components/schemas/Pet"))
+                        .example(Arrays.asList(new HashMap<String, Object>() {
+                            {
+                                put("id", 1);
+                                put("name", "Tony");
+                            }
+                        },new HashMap<String, Object>() {
+                            {
+                                put("id", 2);
+                                put("name", "John");
+                            }
+                        })));
         OpenAPI openAPI = TestUtils.createOpenAPIWithOneSchema("Pet", new ObjectSchema().addProperties("name", new StringSchema()));
         final DefaultCodegen codegen = new JavaClientCodegen();
         codegen.setOpenAPI(openAPI);
@@ -1137,6 +1154,7 @@ public class JavaModelTest {
         Assert.assertFalse(cp1.isMap);
         Assert.assertEquals(cp1.getter, "getPets");
         Assert.assertEquals(cp1.items.baseType, "Pet");
+        JSONAssert.assertEquals(cp1.example, "[{\"name\":\"Tony\",\"id\":1},{\"name\":\"John\",\"id\":2}]", false);
 
         Assert.assertTrue(cm.imports.contains("List"));
         Assert.assertTrue(cm.imports.contains("Pet"));

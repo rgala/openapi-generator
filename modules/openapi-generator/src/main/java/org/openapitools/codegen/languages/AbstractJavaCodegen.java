@@ -43,6 +43,8 @@ import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -163,6 +165,7 @@ public abstract class AbstractJavaCodegen extends DefaultCodegen implements Code
     protected List<String> additionalModelTypeAnnotations = new LinkedList<>();
     protected List<String> additionalEnumTypeAnnotations = new LinkedList<>();
     protected boolean openApiNullable = true;
+    protected static final ObjectMapper objectMapper = new ObjectMapper();
 
     public AbstractJavaCodegen() {
         super();
@@ -1195,7 +1198,14 @@ public abstract class AbstractJavaCodegen extends DefaultCodegen implements Code
     @Override
     public String toExampleValue(Schema p) {
         if (p.getExample() != null) {
-            return escapeText(p.getExample().toString());
+            try {
+                    String result = StringUtils.stripStart(objectMapper.writeValueAsString(p.getExample()), "\"");
+                    result = StringUtils.stripEnd(result, "\"");
+                    return result;
+            } catch (JsonProcessingException e) {
+                LOGGER.warn("Example serialization error for {}, will use toString()", p.getExample());
+                return escapeText(p.getExample().toString());
+            }
         } else {
             return null;
         }
